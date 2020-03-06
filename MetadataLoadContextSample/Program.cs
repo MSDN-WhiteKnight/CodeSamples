@@ -33,70 +33,74 @@ namespace MetadataLoadContextSample
                 var resolver = new PathAssemblyResolver(paths);
                 var mlc = new MetadataLoadContext(resolver);
 
-                //load assembly into MetadataLoadContext
-                Assembly assembly = mlc.LoadFromAssemblyPath(inputFile);
-                AssemblyName name = assembly.GetName();
-
-                //print assembly attribute information
-                Console.WriteLine(name.Name + " has following attributes: ");
-
-                foreach (CustomAttributeData attr in assembly.GetCustomAttributesData())
+                using (mlc)
                 {
-                    try
+
+                    //load assembly into MetadataLoadContext
+                    Assembly assembly = mlc.LoadFromAssemblyPath(inputFile);
+                    AssemblyName name = assembly.GetName();
+
+                    //print assembly attribute information
+                    Console.WriteLine(name.Name + " has following attributes: ");
+
+                    foreach (CustomAttributeData attr in assembly.GetCustomAttributesData())
                     {
-                        Console.WriteLine(attr.AttributeType);
-                    }
-                    catch (FileNotFoundException ex)
-                    {
-                        //we are missing the required dependency assembly
-                        Console.WriteLine("Error: " + ex.Message);
-                    }
-                }
-
-                Console.WriteLine();
-
-                //print assembly type information
-                Console.WriteLine(name.Name + " contains following types: ");
-
-                foreach (TypeInfo t in assembly.GetTypes())
-                {
-                    try
-                    {
-                        Type baseType = t.BaseType;
-
-                        if (t.IsClass)
+                        try
                         {
-                            Console.Write("class ");
+                            Console.WriteLine(attr.AttributeType);
                         }
-                        else if (t.IsValueType)
+                        catch (FileNotFoundException ex)
                         {
-                            if (String.Equals(baseType?.FullName, "System.Enum", StringComparison.InvariantCulture))
+                            //we are missing the required dependency assembly
+                            Console.WriteLine("Error: " + ex.Message);
+                        }
+                    }
+
+                    Console.WriteLine();
+
+                    //print assembly type information
+                    Console.WriteLine(name.Name + " contains following types: ");
+
+                    foreach (TypeInfo t in assembly.GetTypes())
+                    {
+                        try
+                        {
+                            Type baseType = t.BaseType;
+
+                            if (t.IsClass)
                             {
-                                Console.Write("enum ");
+                                Console.Write("class ");
                             }
-                            else
+                            else if (t.IsValueType)
                             {
-                                Console.Write("struct ");
+                                if (String.Equals(baseType?.FullName, "System.Enum", StringComparison.InvariantCulture))
+                                {
+                                    Console.Write("enum ");
+                                }
+                                else
+                                {
+                                    Console.Write("struct ");
+                                }
                             }
+                            else if (t.IsInterface)
+                            {
+                                Console.Write("interface ");
+                            }
+
+                            Console.Write(t.FullName);
+
+                            if (t.IsClass && !String.Equals(baseType.FullName, "System.Object", StringComparison.InvariantCulture))
+                            {
+                                Console.Write(" : " + baseType.FullName);
+                            }
+
+                            Console.WriteLine();
                         }
-                        else if (t.IsInterface)
+                        catch (System.IO.FileNotFoundException ex)
                         {
-                            Console.Write("interface ");
+                            //we are missing the required dependency assembly
+                            Console.WriteLine("Error: " + ex.Message);
                         }
-
-                        Console.Write(t.FullName);
-
-                        if (t.IsClass && !String.Equals(baseType.FullName, "System.Object", StringComparison.InvariantCulture))
-                        {
-                            Console.Write(" : " + baseType.FullName);
-                        }
-
-                        Console.WriteLine();
-                    }
-                    catch (System.IO.FileNotFoundException ex)
-                    {
-                        //we are missing the required dependency assembly
-                        Console.WriteLine("Error: " + ex.Message);
                     }
                 }
 
