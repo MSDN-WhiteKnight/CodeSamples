@@ -1,4 +1,4 @@
-﻿// WPF custom border example using DWM API and WM_NCHITTEST
+﻿// WPF custom border example using WM_NCCALCSIZE and WM_NCHITTEST
 // *** WinAPI function declarations ***
 // Author: MSDN.WhiteKnight (https://github.com/MSDN-WhiteKnight)
 // Based on: https://docs.microsoft.com/en-us/windows/win32/dwm/customframe
@@ -26,8 +26,13 @@ namespace CustomBorderExample
             public int left, top, right, bottom;
         }
 
-        [DllImport("dwmapi.dll")]
-        public static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref MARGINS margins);
+        [StructLayout(LayoutKind.Sequential)]
+        public struct NCCALCSIZE_PARAMS
+        {
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
+            public RECT[] rgrc;
+            public IntPtr lppos;
+        }
 
         [DllImport("user32.dll", SetLastError = true)]
         public static extern bool GetWindowRect(IntPtr hwnd, out RECT lpRect);
@@ -37,6 +42,9 @@ namespace CustomBorderExample
 
         [DllImport("dwmapi.dll")]
         public static extern bool DwmDefWindowProc(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam, ref IntPtr plResult);
+
+        [DllImport("user32.dll")]
+        public static extern int GetSystemMetrics(uint smIndex);
 
         public static int GET_X_LPARAM(IntPtr lp)
         {
@@ -52,6 +60,7 @@ namespace CustomBorderExample
 
         public const uint WM_NCCALCSIZE = 0x0083;
         public const uint WM_NCHITTEST = 0x0084;
+        public const uint WM_NCACTIVATE = 0x0086;
 
         public const uint WS_OVERLAPPED = 0x00000000;
         public const uint WS_CAPTION = 0x00C00000;
@@ -72,5 +81,9 @@ namespace CustomBorderExample
         public const uint HTBOTTOM = 15;
         public const uint HTBOTTOMLEFT = 16;
         public const uint HTBOTTOMRIGHT = 17;
+
+        //GetSystemMetrics constants
+        public const uint SM_CXSIZEFRAME = 32;
+        public const uint SM_CYSIZEFRAME = 33;
     }
 }

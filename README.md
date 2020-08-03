@@ -14,7 +14,7 @@ Various C# code samples
 ## WPF
 
 - [Audio visualizer using Windows Core Audio API](AudioVisualizer/)
-- [Custom frame using DWM API and WM_NCHITTEST](WPF/CustomBorderExample/)
+- [Custom frame using WM_NCCALCSIZE and WM_NCHITTEST](WPF/CustomBorderExample/)
 
 ## .NET Core
 

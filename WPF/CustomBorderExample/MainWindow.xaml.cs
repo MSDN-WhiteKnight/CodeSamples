@@ -1,4 +1,4 @@
-﻿// WPF custom border example using DWM API and WM_NCHITTEST
+﻿// WPF custom border example using WM_NCCALCSIZE and WM_NCHITTEST
 // *** Main window codebehind ***
 // Author: MSDN.WhiteKnight (https://github.com/MSDN-WhiteKnight)
 // Based on: https://docs.microsoft.com/en-us/windows/win32/dwm/customframe
@@ -14,32 +14,13 @@ namespace CustomBorderExample
 {
     public partial class MainWindow : Window
     {
-        const int BORDERWIDTH = 5;
-        const int CAPTIONHEIGHT = 25;
-
-        IntPtr Handle;                
+        IntPtr Handle;
+        int xborder;
+        int yborder;
 
         public MainWindow()
         {
             InitializeComponent();
-        }
-
-        void ExtendClientArea()
-        {
-            // Extend the frame into the client area.
-            NativeMethods.MARGINS margins = new NativeMethods.MARGINS();
-
-            margins.cxLeftWidth = 1;
-            margins.cxRightWidth = 1;
-            margins.cyBottomHeight = 1;
-            margins.cyTopHeight = 1;
-
-            int hr = NativeMethods.DwmExtendFrameIntoClientArea(this.Handle, ref margins);
-
-            if (hr != 0)
-            {
-                throw Marshal.GetExceptionForHR(hr);
-            }
         }
 
         //process mouse clicks for non-client area
@@ -62,22 +43,22 @@ namespace CustomBorderExample
             bool fOnResizeBorder = false;
 
             // Determine if the point is at the top or bottom of the window.
-            if (ptMouse.Y >= rcWindow.top && ptMouse.Y < rcWindow.top + BORDERWIDTH+CAPTIONHEIGHT)
+            if (ptMouse.Y >= rcWindow.top && ptMouse.Y < rcWindow.top + yborder + title.ActualHeight)
             {
                 fOnResizeBorder = (ptMouse.Y < (rcWindow.top - rcFrame.top));
                 uRow = 0;
             }
-            else if (ptMouse.Y < rcWindow.bottom && ptMouse.Y >= rcWindow.bottom - BORDERWIDTH)
+            else if (ptMouse.Y < rcWindow.bottom && ptMouse.Y >= rcWindow.bottom - yborder)
             {
                 uRow = 2;
             }
 
             // Determine if the point is at the left or right of the window.
-            if (ptMouse.X >= rcWindow.left && ptMouse.X < rcWindow.left + BORDERWIDTH)
+            if (ptMouse.X >= rcWindow.left && ptMouse.X < rcWindow.left + xborder)
             {
                 uCol = 0; // left side
             }
-            else if (ptMouse.X < rcWindow.right && ptMouse.X >= rcWindow.right - BORDERWIDTH)
+            else if (ptMouse.X < rcWindow.right && ptMouse.X >= rcWindow.right - xborder)
             {
                 uCol = 2; // right side
             }
@@ -106,17 +87,38 @@ namespace CustomBorderExample
         {
             bool fCallDWP = true;
             IntPtr lRet = IntPtr.Zero;
-            fCallDWP = !NativeMethods.DwmDefWindowProc(hwnd, msg, wParam, lParam, ref lRet);
 
             if (msg == NativeMethods.WM_NCCALCSIZE)
             {
                 if (wParam != (IntPtr)0)
                 {
-                    //remove standard non-client area
+                    //remove top edge of the standard non-client area
                     lRet = IntPtr.Zero;
-                    fCallDWP = false;
+
+                    NativeMethods.NCCALCSIZE_PARAMS pars = (NativeMethods.NCCALCSIZE_PARAMS)Marshal.PtrToStructure(
+                        lParam, typeof(NativeMethods.NCCALCSIZE_PARAMS)
+                        );
+
+                    pars.rgrc[0].top = pars.rgrc[0].top;
+                    pars.rgrc[0].left = pars.rgrc[0].left + xborder;
+                    pars.rgrc[0].right = pars.rgrc[0].right - xborder * 2;
+                    pars.rgrc[0].bottom = pars.rgrc[0].bottom - yborder;
+
+                    Marshal.StructureToPtr(pars, lParam, false);
+
+                    handled = true;
+                    return lRet;
                 }
             }
+
+            if (msg == NativeMethods.WM_NCACTIVATE)
+            {
+                lRet = (IntPtr)1;
+                handled = true;
+                return lRet;
+            }
+
+            fCallDWP = !NativeMethods.DwmDefWindowProc(hwnd, msg, wParam, lParam, ref lRet);
 
             if (msg == NativeMethods.WM_NCHITTEST && lRet == IntPtr.Zero)
             {
@@ -139,7 +141,8 @@ namespace CustomBorderExample
             HwndSource source = HwndSource.FromHwnd(h.Handle);
             Handle = h.Handle;
             source.AddHook(new HwndSourceHook(WndProc));
-            ExtendClientArea();
+            xborder = NativeMethods.GetSystemMetrics(NativeMethods.SM_CXSIZEFRAME);
+            yborder = NativeMethods.GetSystemMetrics(NativeMethods.SM_CYSIZEFRAME);
         }
 
         private void bMinimize_Click(object sender, RoutedEventArgs e)
