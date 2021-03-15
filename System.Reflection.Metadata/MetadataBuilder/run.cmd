@@ -1,0 +1,2 @@
+dotnet ConsoleApplication.dll
+pause
