@@ -19,3 +19,4 @@ Various C# code samples
 ## .NET Core
 
 - [Inspecting assembly contents programmatically using MetadataLoadContext](MetadataLoadContextSample/)
+- [Generating .NET Core assembly using MetadataBuilder](System.Reflection.Metadata/MetadataBuilder/)
