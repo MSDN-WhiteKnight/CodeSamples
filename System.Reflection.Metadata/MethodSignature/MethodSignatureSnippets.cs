@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Reflection.Metadata;
@@ -40,12 +40,10 @@ namespace MethodSignatureSnippets
             
             // Create references to System.Object and System.Console types.
             AssemblyReferenceHandle mscorlibAssemblyRef = metadata.AddAssemblyReference(
-                name: metadata.GetOrAddString("mscorlib"),
-                version: new Version(4, 0, 0, 0),
+                name: metadata.GetOrAddString("System.Runtime"),
+                version: new Version(4,0,0,0),
                 culture: default(StringHandle),
-                publicKeyOrToken: metadata.GetOrAddBlob(
-                    new byte[] { 0xB7, 0x7A, 0x5C, 0x56, 0x19, 0x34, 0xE0, 0x89 }
-                    ),
+                publicKeyOrToken: default(BlobHandle),
                 flags: default(AssemblyFlags),
                 hashValue: default(BlobHandle));
 
@@ -182,8 +180,7 @@ namespace MethodSignatureSnippets
 
             new BlobEncoder(methodSignature).
                 MethodSignature().
-                Parameters(0, returnType => returnType.Void(), 
-                parameters => { });
+                Parameters(0, returnType => returnType.Void(), parameters => { });
             
             return methodSignature;
         }
@@ -208,12 +205,10 @@ namespace MethodSignatureSnippets
             var methodSignature = new BlobBuilder();
             
             AssemblyReferenceHandle mscorlibAssemblyRef = metadataBuilder.AddAssemblyReference(
-                name: metadataBuilder.GetOrAddString("mscorlib"),
+                name: metadataBuilder.GetOrAddString("System.Threading.Thread"),
                 version: new Version(4, 0, 0, 0),
                 culture: default(StringHandle),
-                publicKeyOrToken: metadataBuilder.GetOrAddBlob(
-                    new byte[] { 0xB7, 0x7A, 0x5C, 0x56, 0x19, 0x34, 0xE0, 0x89 }
-                ),
+                publicKeyOrToken: default(BlobHandle),
                 flags: default(AssemblyFlags),
                 hashValue: default(BlobHandle));
 
@@ -227,6 +222,21 @@ namespace MethodSignatureSnippets
                 Parameters(1, returnType => returnType.Void(),
                 parameters => {
                     parameters.AddParameter().Type().Type(typeRef, false);
+                });
+
+            return methodSignature;
+        }
+
+        public static BlobBuilder ProduceMethodSignature4(MetadataBuilder metadataBuilder)
+        {
+            var methodSignature = new BlobBuilder();
+
+            new BlobEncoder(methodSignature).
+                MethodSignature().
+                Parameters(2, returnType => returnType.Void(),
+                parameters => {
+                    parameters.AddParameter().Type(isByRef: true).Int32();
+                    parameters.AddParameter().Type().SZArray().Int32();
                 });
 
             return methodSignature;
@@ -317,6 +327,38 @@ namespace MethodSignatureSnippets
             try
             {
                 object ret = mi.Invoke(null, new object[] { null });
+
+                if (ret == null) Console.WriteLine("(null)");
+                else Console.WriteLine(ret);
+            }
+            catch (TargetInvocationException ex)
+            {
+                if (ex.InnerException is NullReferenceException) Console.WriteLine("(NullReferenceException)");
+                else Console.WriteLine(ex.ToString());
+            }
+        }
+
+        public static void BuildAssembly4(string name)
+        {
+            using (var peStream = new FileStream(name + ".dll", FileMode.OpenOrCreate, FileAccess.ReadWrite))
+            {
+                var ilBuilder = new BlobBuilder();
+                var metadataBuilder = new MetadataBuilder();
+
+                MethodDefinitionHandle entryPoint = EmitMethod(name, metadataBuilder, ilBuilder,
+                    "TestMethod", ProduceMethodSignature4, new string[] { "refParameter", "array" });
+
+                WritePEImage(peStream, metadataBuilder, ilBuilder, default(MethodDefinitionHandle));
+            }
+
+            Console.WriteLine(name);
+            Assembly ass = Assembly.LoadFrom(name + ".dll");
+            Type t = ass.GetType(name + ".Program");
+            MethodInfo mi = t.GetMethod("TestMethod");
+
+            try
+            {
+                object ret = mi.Invoke(null, new object[] { 0 , new int[0] });
 
                 if (ret == null) Console.WriteLine("(null)");
                 else Console.WriteLine(ret);
